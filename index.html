@@ -121,6 +121,11 @@ var yt, timer;
       }
     });
 
+        // Fungsi wajib untuk API YouTube
+      function onYouTubeIframeAPIReady() {
+            console.log("YouTube API sedia");
+        }
+
     function playKirin() {
       var u = document.getElementById('url-in').value;
       var a = document.getElementById('aud-engine');
