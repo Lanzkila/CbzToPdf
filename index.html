@@ -1,39 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="ms">
 <head>
-    <title>Pembaca PDF Tempatan</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern PDF Viewer</title>
+    <script src="https://tailwindcss.com"></script>
     <script src="https://cloudflare.com"></script>
     <style>
-        #pdf-canvas { border: 1px solid black; width: 100%; max-width: 800px; }
+        body { background: #0f172a; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        #pdf-render { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
     </style>
 </head>
-<body>
-    <input type="file" id="file-input" accept="application/pdf">
-    <canvas id="pdf-canvas"></canvas>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <!-- Header / Navbar -->
+    <nav class="w-full max-w-5xl glass rounded-2xl p-4 flex justify-between items-center mb-8 sticky top-4 z-50">
+        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            MyPDF Reader
+        </h1>
+        <div class="flex gap-4">
+            <label for="file-upload" class="cursor-pointer bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm transition-all font-medium">
+                Pilih Fail PDF
+            </label>
+            <input id="file-upload" type="file" class="hidden" accept="application/pdf" />
+        </div>
+    </nav>
+
+    <!-- Main Viewer Area -->
+    <main id="drop-zone" class="w-full max-w-4xl flex flex-col items-center">
+        <!-- Empty State (Sebelum Upload) -->
+        <div id="empty-state" class="w-full aspect-[3/4] md:aspect-video glass rounded-3xl flex flex-col items-center justify-center border-dashed border-2 border-slate-700">
+            <div class="p-6 bg-slate-800 rounded-full mb-4">📂</div>
+            <p class="text-slate-400">Tarik fail PDF ke sini atau klik butang di atas</p>
+        </div>
+
+        <!-- Canvas Container (Selepas Upload) -->
+        <div id="viewer-container" class="hidden w-full flex flex-col items-center gap-6">
+            <div class="glass p-2 rounded-xl overflow-hidden shadow-2xl">
+                <canvas id="pdf-render" class="rounded-lg max-w-full h-auto"></canvas>
+            </div>
+            
+            <!-- Pagination Control -->
+            <div class="glass px-6 py-3 rounded-full flex items-center gap-6">
+                <button id="prev-page" class="hover:text-blue-400 transition">←</button>
+                <span class="text-sm font-mono">Helaian <span id="page-num" class="text-blue-400">1</span> / <span id="page-count">0</span></span>
+                <button id="next-page" class="hover:text-blue-400 transition">→</button>
+            </div>
+        </div>
+    </main>
 
     <script>
-        const fileInput = document.getElementById('file-input');
-        const canvas = document.getElementById('pdf-canvas');
-        const ctx = canvas.getContext('2d');
+        const url = 'https://cloudflare.com';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = url;
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file.type !== 'application/pdf') return;
+        let pdfDoc = null, pageNum = 1, canvas = document.getElementById('pdf-render'), ctx = canvas.getContext('2d');
 
-            const reader = new FileReader();
-            reader.onload = function() {
-                const typedarray = new Uint8Array(this.result);
-                pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                    pdf.getPage(1).then(page => {
-                        const viewport = page.getViewport({scale: 1.5});
-                        canvas.height = viewport.height;
-                        canvas.width = viewport.width;
-                        page.render({canvasContext: ctx, viewport: viewport});
-                    });
+        const renderPage = num => {
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale: 1.5 });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+                    document.getElementById('page-num').textContent = num;
                 });
-            };
-            reader.readAsArrayBuffer(file);
+            });
+        };
+
+        document.getElementById('file-upload').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file?.type === 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                        pdfDoc = pdf;
+                        document.getElementById('page-count').textContent = pdf.numPages;
+                        document.getElementById('empty-state').classList.add('hidden');
+                        document.getElementById('viewer-container').classList.remove('hidden');
+                        renderPage(pageNum);
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
         });
+
+        document.getElementById('prev-page').addEventListener('click', () => { if (pageNum > 1) { pageNum--; renderPage(pageNum); } });
+        document.getElementById('next-page').addEventListener('click', () => { if (pageNum < pdfDoc.numPages) { pageNum++; renderPage(pageNum); } });
     </script>
 </body>
 </html>
