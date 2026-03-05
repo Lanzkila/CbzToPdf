@@ -3,90 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern PDF Viewer</title>
-    <script src="https://tailwindcss.com"></script>
-    <script src="https://cloudflare.com"></script>
+    <title>Dual App Desktop &amp; HP Sync</title>
+    
     <style>
-        body { background: #0f172a; color: #f1f5f9; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        #pdf-render { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #202124; font-family: sans-serif; }
+    body { display: flex; flex-direction: column; }
+
+    /* Header & Address Bar */
+    .app-header { background: #35363a; padding: 10px; display: flex; gap: 10px; border-bottom: 1px solid #1c1c1e; flex-shrink: 0; }
+    
+    /* Logik HP: Sembunyi input tak aktif. Logik Desktop: Tunjuk yang dipilih sahaja */
+    .address-bar { flex: 1; display: none; align-items: center; background: #202124; padding: 8px 15px; border-radius: 20px; border: 1px solid #5f6368; animation: fadeIn 0.3s; }
+    .address-bar.active-input { display: flex; }
+    .address-bar input { background: transparent; border: none; color: #fff; width: 100%; outline: none; font-size: 14px; }
+    .address-bar span { color: #8ab4f8; font-size: 11px; font-weight: bold; margin-right: 10px; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Workspace */
+    .workspace { flex-grow: 1; display: flex; background: #000; position: relative; overflow: hidden; gap: 4px; }
+    .pane { flex: 1; background: #fff; display: flex; flex-direction: column; position: relative; transition: 0.3s; border: 4px solid transparent; border-radius: 8px; overflow: hidden; margin: 2px; }
+    
+    /* Highlight pane yang aktif di Desktop */
+    .pane.active-pane { border: 4px solid #8ab4f8; box-shadow: 0 0 15px rgba(138, 180, 248, 0.4); }
+    iframe { width: 100%; height: 100%; border: none; background: #fff; pointer-events: auto; }
+
+    /* Bottom Nav (Wajib ada untuk HP & Desktop Switcher) */
+    .bottom-nav { display: flex; background: #35363a; border-top: 1px solid #1c1c1e; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; }
+    .nav-item { flex: 1; color: #9aa0a6; display: flex; align-items: center; justify-content: center; padding: 15px 0; font-size: 14px; font-weight: bold; cursor: pointer; border-right: 1px solid #202124; }
+    .nav-item.active { color: #8ab4f8; background: rgba(138, 180, 248, 0.1); border-bottom: 3px solid #8ab4f8; }
+
+    /* RESPONSIVE: Di HP, sorok pane yang tak aktif */
+    @media (max-width: 768px) {
+      .pane { display: none; position: absolute; inset: 0; }
+      .pane.active-pane { display: flex; }
+      .workspace { gap: 0; }
+    }
+
+      .pane::before { content: 'TAB ACTIVE'; position: absolute; top: 10px; right: 10px; background: #8ab4f8; color: #202124; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 4px; display: none; z-index: 10; }
+      .pane.active-pane::before { display: block; }
+
+      ::-webkit-scrollbar { width: 8px; height: 8px; background-color: #202124; }
+      ::-webkit-scrollbar-track { background: #2b2c2f; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb { background: #5f6368; border-radius: 10px; border: 2px solid #2b2c2f; }
+      ::-webkit-scrollbar-thumb:hover { background: #8ab4f8; }
+      * { scrollbar-width: thin; scrollbar-color: #5f6368 #2b2c2f; }
+
+    .navbar, .quickedit, .item-control { display: none !important; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+<body>
 
-    <!-- Header / Navbar -->
-    <nav class="w-full max-w-5xl glass rounded-2xl p-4 flex justify-between items-center mb-8 sticky top-4 z-50">
-        <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            MyPDF Reader
-        </h1>
-        <div class="flex gap-4">
-            <label for="file-upload" class="cursor-pointer bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm transition-all font-medium">
-                Pilih Fail PDF
-            </label>
-            <input id="file-upload" type="file" class="hidden" accept="application/pdf" />
-        </div>
-    </nav>
+<div class='app-header'>
+    <!-- Alamat Bar Dinamik -->
+    <div class='address-bar active-input' id='bar1'>
+      <span>TAB 1</span>
+      <input autocomplete='off' id='input1' placeholder='Masukkan Link 1...' type='url'/>
+    </div>
+    <div class='address-bar' id='bar2'>
+      <span>TAB 2</span>
+      <input autocomplete='off' id='input2' placeholder='Masukkan Link 2...' type='url'/>
+    </div>
+  </div>
 
-    <!-- Main Viewer Area -->
-    <main id="drop-zone" class="w-full max-w-4xl flex flex-col items-center">
-        <!-- Empty State (Sebelum Upload) -->
-        <div id="empty-state" class="w-full aspect-[3/4] md:aspect-video glass rounded-3xl flex flex-col items-center justify-center border-dashed border-2 border-slate-700">
-            <div class="p-6 bg-slate-800 rounded-full mb-4">📂</div>
-            <p class="text-slate-400">Tarik fail PDF ke sini atau klik butang di atas</p>
-        </div>
+  <div class='workspace'>
+    <!-- Klik pada pane untuk aktifkan input bar di atas (Desktop) -->
+    <div class='pane active-pane' id='pane1' onclick='switchTab(1)'>
+      <iframe id='frame1' src='about:blank'/>
+    </div>
+    <div class='pane' id='pane2' onclick='switchTab(2)'>
+      <iframe id='frame2' src='about:blank'/>
+    </div>
+  </div>
 
-        <!-- Canvas Container (Selepas Upload) -->
-        <div id="viewer-container" class="hidden w-full flex flex-col items-center gap-6">
-            <div class="glass p-2 rounded-xl overflow-hidden shadow-2xl">
-                <canvas id="pdf-render" class="rounded-lg max-w-full h-auto"></canvas>
-            </div>
-            
-            <!-- Pagination Control -->
-            <div class="glass px-6 py-3 rounded-full flex items-center gap-6">
-                <button id="prev-page" class="hover:text-blue-400 transition">←</button>
-                <span class="text-sm font-mono">Helaian <span id="page-num" class="text-blue-400">1</span> / <span id="page-count">0</span></span>
-                <button id="next-page" class="hover:text-blue-400 transition">→</button>
-            </div>
-        </div>
-    </main>
+  <!-- Menu Bawah (Wajib) -->
+  <div class='bottom-nav'>
+    <div class='nav-item active' id='btnTab1' onclick='switchTab(1)'>PANEL 1</div>
+    <div class='nav-item' id='btnTab2' onclick='switchTab(2)'>PANEL 2</div>
+  </div>
 
     <script>
-        const url = 'https://cloudflare.com';
-        pdfjsLib.GlobalWorkerOptions.workerSrc = url;
+    function switchTab(n) {
+      // 1. Aktifkan Pane yang betul
+      document.querySelectorAll(&#39;.pane&#39;).forEach(p =&gt; p.classList.remove(&#39;active-pane&#39;));
+      document.getElementById(&#39;pane&#39;+n).classList.add(&#39;active-pane&#39;);
+      
+      // 2. Tukar Alamat Bar di Header (Satu sahaja aktif pada satu masa)
+      document.querySelectorAll(&#39;.address-bar&#39;).forEach(b =&gt; b.classList.remove(&#39;active-input&#39;));
+      document.getElementById(&#39;bar&#39;+n).classList.add(&#39;active-input&#39;);
+      
+      // 3. Tukar Status Button Menu
+      document.querySelectorAll(&#39;.nav-item&#39;).forEach(i =&gt; i.classList.remove(&#39;active&#39;));
+      document.getElementById(&#39;btnTab&#39;+n).classList.add(&#39;active&#39;);
+      
+      // Auto-focus ke input supaya boleh terus taip
+      document.getElementById(&#39;input&#39;+n).focus();
+    }
 
-        let pdfDoc = null, pageNum = 1, canvas = document.getElementById('pdf-render'), ctx = canvas.getContext('2d');
+    // Logik Enter yang Diasingkan
+    function bindInput(inputId, frameId) {
+      document.getElementById(inputId).addEventListener(&#39;keydown&#39;, function(e) {
+        if (e.key === &#39;Enter&#39;) {
+          e.preventDefault();
+          let val = this.value.trim();
+          if (val) {
+            if (!/^https?:\/\//i.test(val)) val = &#39;https://&#39; + val;
+            document.getElementById(frameId).src = val;
+            this.blur();
+          }
+        }
+      });
+    }
 
-        const renderPage = num => {
-            pdfDoc.getPage(num).then(page => {
-                const viewport = page.getViewport({ scale: 1.5 });
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
-                    document.getElementById('page-num').textContent = num;
-                });
-            });
-        };
-
-        document.getElementById('file-upload').addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (file?.type === 'application/pdf') {
-                const reader = new FileReader();
-                reader.onload = function() {
-                    const typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                        pdfDoc = pdf;
-                        document.getElementById('page-count').textContent = pdf.numPages;
-                        document.getElementById('empty-state').classList.add('hidden');
-                        document.getElementById('viewer-container').classList.remove('hidden');
-                        renderPage(pageNum);
-                    });
-                };
-                reader.readAsArrayBuffer(file);
-            }
-        });
-
-        document.getElementById('prev-page').addEventListener('click', () => { if (pageNum > 1) { pageNum--; renderPage(pageNum); } });
-        document.getElementById('next-page').addEventListener('click', () => { if (pageNum < pdfDoc.numPages) { pageNum++; renderPage(pageNum); } });
+    window.onload = function() {
+      bindInput(&#39;input1&#39;, &#39;frame1&#39;);
+      bindInput(&#39;input2&#39;, &#39;frame2&#39;);
+    };
     </script>
+
 </body>
 </html>
