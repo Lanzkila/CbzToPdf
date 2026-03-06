@@ -1,1 +1,78 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <title>Bulk ZIP to PDF Converter</title>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; text-align: center; }
+        .container { border: 2px dashed #ccc; padding: 40px; margin-top: 20px; }
+        #status { margin-top: 20px; color: blue; }
+    </style>
+</head>
+<body>
+
+    <h1>Bulk ZIP to PDF Converter</h1>
+    <p>Muat naik 5 ZIP, dapat 5 PDF secara automatik.</p>
+    
+    <div class="container">
+        <input type="file" id="fileInput" multiple accept=".zip">
+        <button onclick="processFiles()">Tukar ke PDF</button>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        async function processFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const status = document.getElementById('status');
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                alert("Sila pilih sekurang-kurangnya satu fail ZIP.");
+                return;
+            }
+
+            status.innerText = "Sedang memproses...";
+
+            for (let i = 0; i < files.length; i++) {
+                const zipFile = files[i];
+                const zipName = zipFile.name.replace(".zip", "");
+                
+                try {
+                    const zip = await JSZip.loadAsync(zipFile);
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    let pageAdded = false;
+
+                    // Logik: Ambil semua gambar/fail dalam ZIP ini dan masukkan ke 1 PDF
+                    const fileKeys = Object.keys(zip.files);
+                    
+                    for (const filename of fileKeys) {
+                        if (filename.match(/\.(jpg|jpeg|png)$/i)) {
+                            const imgData = await zip.files[filename].async("base64");
+                            const format = filename.split('.').pop().toUpperCase();
+                            
+                            if (pageAdded) doc.addPage();
+                            doc.addImage(`data:image/${format.toLowerCase()};base64,${imgData}`, format, 10, 10, 180, 160);
+                            pageAdded = true;
+                        }
+                    }
+
+                    if (pageAdded) {
+                        doc.save(`${zipName}.pdf`);
+                        status.innerText = `Selesai: ${zipName}.pdf dimuat turun.`;
+                    } else {
+                        console.warn(`Tiada gambar dalam ${zipFile.name}`);
+                    }
+                } catch (err) {
+                    console.error("Ralat memproses ZIP:", err);
+                }
+            }
+            status.innerText = "Semua fail telah diproses!";
+        }
+    </script>
+</body>
+</html>
 
