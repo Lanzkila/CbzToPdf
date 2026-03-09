@@ -216,137 +216,118 @@ h1 { color: #3c4858; font-size: 26px; margin-bottom: 10px; font-weight: 700; }
 <script>
     let selectedFile = null;
 
-    document.getElementById('fileInput').onchange = (e) => {
-    selectedFile = e.target.files[0];
-    if(selectedFile) {
-        document.getElementById('fileNameDisplay').innerText = selectedFile.name;
-        
-        // Cek jika saiz > 400MB (400 * 1024 * 1024 bytes)
-        const sizeWarning = document.getElementById('sizeWarning');
-        if (selectedFile.size > 400 * 1024 * 1024) {
-            sizeWarning.style.display = 'block';
-        } else {
-            sizeWarning.style.display = 'none';
-        }
-    }
+document.getElementById('fileInput').onchange = (e) => {
+  selectedFile = e.target.files[0];
+  if(selectedFile) document.getElementById('fileNameDisplay').innerText = selectedFile.name;
 };
 
-    document.getElementById('convertBtn').onclick = async function() {
-        if(!selectedFile) return alert('Sila pilih fail CBZ dahulu!');
-        
-        const format = document.querySelector('input[name="format"]:checked').value;
-        const statusArea = document.getElementById('statusArea');
-        const successBar = document.getElementById('successBar');
-        const infoBox = document.getElementById('infoBox');
-        const percentText = document.getElementById('percentText');
-        const width = parseInt(document.getElementById('imgWidth').value);
-        const quality = parseInt(document.getElementById('imgQuality').value) / 100;
+document.getElementById('convertBtn').onclick = async function() {
+  if(!selectedFile) return alert('Pilih fail CBZ dulu!');
+  
+  // Ambil elemen UI
+  const format = document.querySelector('input[name="format"]:checked').value;
+  const statusArea = document.getElementById('statusArea');
+  const successBar = document.getElementById('successBar');
+  const infoBox = document.getElementById('infoBox'); 
+  const percentText = document.getElementById('percentText');
+  const progressBar = document.getElementById('progressBar');
+  const heroDesc = document.querySelector('.hero-desc');
+  
+  const width = parseInt(document.getElementById('imgWidth').value);
 
-        this.disabled = true;
-        statusArea.style.display = 'block';
-        successBar.style.display = 'none';
-        infoBox.style.display = 'none';
+  // Setup UI permulaan
+  this.disabled = true;
+  statusArea.style.display = 'block';
+  successBar.style.display = 'none';
+  infoBox.style.display = 'none'; 
+  if(heroDesc) heroDesc.innerHTML = `Converting to <strong>${format.toUpperCase()}</strong>... Please wait.`;
 
-        try {
-            const zipLoader = await JSZip.loadAsync(selectedFile);
-            const files = Object.keys(zipLoader.files)
-                .filter(f => f.match(/\.(jpg|jpeg|png|webp)$/i))
-                .sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
-            
-            if (files.length === 0) throw new Error("Tiada gambar dijumpai dalam fail CBZ.");
-
-            if (format === 'pdf') {
-                const { jsPDF } = window.jspdf;
-                let pdf = null;
-
-                for (let i = 0; i < files.length; i++) {
-                    const data = await zipLoader.files[files[i]].async("blob");
-                    const url = URL.createObjectURL(data);
-                    const img = new Image();
-                    await new Promise(r => { img.onload = r; img.src = url; });
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width; // Ikut input Width kau (cth: 1200)
-                    canvas.height = (img.height / img.width) * width;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    const lowResImg = canvas.toDataURL('image/jpeg', quality);
-
-                    const h = (img.height / img.width) * width;
-                    if (i === 0) {
-                    pdf = new jsPDF({ unit: "px", format: [canvas.width, canvas.height] });
-                    } else {
-                    pdf.addPage([canvas.width, canvas.height], 'p');
-                    }
-                    pdf.addImage(lowResImg, 'JPEG', 0, 0, canvas.width, canvas.height, undefined, 'FAST');
-                    URL.revokeObjectURL(url);
-                    img.src = "";
-                    canvas.width = 0; canvas.height = 0;
-                    let percent = Math.round(((i + 1) / files.length) * 100);
-                    document.getElementById('progressBar').style.width = percent + '%';
-                    percentText.innerText = percent + '%';
-                if (percent >= 50 && percent < 100) {
-                    infoBox.style.display = 'block';
-                }
-                    await new Promise(r => setTimeout(r, 1));
-            }
-            finishDownload(pdf.output('blob'), selectedFile.name.replace('.cbz', '.pdf'));
-            } else {
-                // Logic EPUB (Simplified)
-                const epubZip = new JSZip();
-                epubZip.file("mimetype", "application/epub+zip", { compression: "STORE" });
-                const oebps = epubZip.folder("OEBPS");
-                const imgFolder = oebps.folder("images");
-                let manifest = "";
-                let spine = "";
-
-    for (let i = 0; i < files.length; i++) {
-    // 1. Ambil data sebagai Blob (bukan string/base64 supaya jimat RAM)
-    const data = await zipLoader.files[files[i]].async("blob");
-    const url = URL.createObjectURL(data);
+  try {
+    const zipLoader = await JSZip.loadAsync(selectedFile);
+    const files = Object.keys(zipLoader.files)
+      .filter(f => f.match(/\.(jpg|jpeg|png|webp)$/i))
+      .sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
     
-    const img = new Image();
-    await new Promise(r => { img.onload = r; img.src = url; });
+    if (format === 'pdf') {
+        const { jsPDF } = window.jspdf;
+        let pdf = null;
 
-    const h = (img.height / img.width) * width;
-    if (i === 0) {
-        pdf = new jsPDF({ unit: "px", format: [width, h] });
-    } else {
-        pdf.addPage([width, h], 'p');
-    }
+        for (let i = 0; i < files.length; i++) {
+          const data = await zipLoader.files[files[i]].async("blob");
+          const url = URL.createObjectURL(data);
+          const img = new Image();
+          await new Promise(r => { img.onload = r; img.src = url; });
 
-    // 2. Guna kualiti 'FAST' dan format JPEG untuk kompresi automatik
-    pdf.addImage(img, 'JPEG', 0, 0, width, h, undefined, 'FAST');
-    URL.revokeObjectURL(url);
-    let percent = Math.round(((i + 1) / files.length) * 100);
-    
-    percentText.innerText = percent + '%';
-    if (percent >= 50 && percent < 100) infoBox.style.display = 'block';
-}
+          const h = (img.height / img.width) * width;
+          if (i === 0) {
+            pdf = new jsPDF({ unit: "px", format: [width, h] });
+          } else {
+            pdf.addPage([width, h], 'p');
+          }
 
-                epubZip.folder("META-INF").file("container.xml", '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>');
-                oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Comic</dc:title><dc:language>en</dc:language></metadata><manifest>${manifest}</manifest><spine>${spine}</spine></package>`);
-                
-                const content = await epubZip.generateAsync({type:"blob", mimeType: "application/epub+zip"});
-                finishDownload(content, selectedFile.name.replace('.cbz', '.epub'));
-            }
-        } catch (e) { 
-            alert('Error: ' + e.message); 
-        } finally {
-            this.disabled = false;
+          // Guna cara asal kau (Direct injection) - Kekal tajam!
+          pdf.addImage(img, 'JPEG', 0, 0, width, h, undefined, 'FAST');
+          URL.revokeObjectURL(url);
+          
+          // --- LOGIK PROGRESS & ROKET ---
+          let percent = Math.round(((i + 1) / files.length) * 100);
+          percentText.innerText = percent + '%';
+          if(progressBar) progressBar.style.width = percent + '%';
+          if (percent >= 50 && percent < 100) infoBox.style.display = 'block';
+
+          // Bagi browser "bernafas" untuk elak hang
+          await new Promise(r => setTimeout(r, 1));
         }
-    };
+        finishDownload(pdf.output('blob'), selectedFile.name.replace('.cbz', '.pdf'));
 
-    function finishDownload(blob, name) {
-        const url = URL.createObjectURL(blob);
-        const dl = document.getElementById('downloadLink');
-        dl.href = url;
-        dl.download = name;
-        document.getElementById('infoBox').style.display = 'none'; // Padam kotak kuning
-        document.getElementById('successBar').style.display = 'block'; // Tunjuk kotak hijau
+        } else {
+        const epubZip = new JSZip();
+        epubZip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+        
+        const oebps = epubZip.folder("OEBPS");
+        const imgFolder = oebps.folder("images");
+        let manifest = "";
+        let spine = "";
+
+        for (let i = 0; i < files.length; i++) {
+          const data = await zipLoader.files[files[i]].async("blob");
+          const imgName = `p${i}.jpg`;
+          imgFolder.file(imgName, data);
+          manifest += `<item id="i${i}" href="images/${imgName}" media-type="image/jpeg"/>`;
+          spine += `<itemref idref="i${i}"/>`;
+          
+          // --- LOGIK PROGRESS & ROKET ---
+          let percent = Math.round(((i + 1) / files.length) * 100);
+          percentText.innerText = percent + '%';
+          if(progressBar) progressBar.style.width = percent + '%';
+          if (percent >= 50 && percent < 100) infoBox.style.display = 'block';
+          
+          await new Promise(r => setTimeout(r, 1));
+        }
+
+        oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Comic</dc:title><dc:language>en</dc:language></metadata><manifest>${manifest}</manifest><spine>${spine}</spine></package>`);
+        epubZip.folder("META-INF").file("container.xml", '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>');
+        
+        const content = await epubZip.generateAsync({type:"blob", mimeType: "application/epub+zip"});
+        finishDownload(content, selectedFile.name.replace('.cbz', '.epub'));
     }
-</script>
+  } catch (e) { 
+      alert('Error: ' + e.message); 
+  } finally {
+      this.disabled = false;
+      statusArea.style.display = 'none';
+      if(infoBox) infoBox.style.display = 'none';
+      if(heroDesc) heroDesc.innerHTML = "Convert your <strong>CBZ</strong> comics to <strong>PDF</strong> or <strong>EPUB</strong> instantly.";
+  }
+};
 
+function finishDownload(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const dl = document.getElementById('downloadLink');
+    dl.href = url;
+    dl.download = name;
+    document.getElementById('successBar').style.display = 'block';
+}
+</script>
 </body>
 </html>
