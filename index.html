@@ -141,22 +141,41 @@
 
 .modal-content {
     background-color: #fff;
-    margin: 10% auto; /* Jarak dari atas */
-    padding: 20px;
+    margin: 15% auto; /* Jarak dari atas skrin */
+    padding: 25px 20px; /* Ruang dalam: atas-bawah 25px, kiri-kanan 20px */
     border-radius: 12px;
-    width: 85%; /* Gunakan peratusan supaya tak terkeluar kat HP */
-    max-width: 400px; /* Saiz maksimum kalau buka kat PC */
+    width: 90%; /* Supaya ada gap 5% kiri dan 5% kanan kat HP */
+    max-width: 400px;
     position: relative;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    animation: zoomIn 0.3s ease;
-    box-sizing: border-box; 
-    max-height: 80vh; 
-    overflow-y: auto; 
+    box-sizing: border-box; /* WAJIB: Supaya padding tak buat kotak jadi lebar sangat */
+    text-align: left; /* Pastikan teks bermula dari kiri secara rata */
 }
 
-/* Pastikan gambar atau butang dalam modal pun tak terkeluar */
-.modal-content img, .test-file-box {
-    max-width: 100%;
+/* Supaya list (titik-titik) tu masuk ke dalam kotak, tak terkeluar */
+.modal-content ul {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.modal-content p, .modal-content li {
+    line-height: 1.5; /* Jarak antara baris ayat */
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+/* Supaya butang Test File tu duduk tengah dan lebar dia ngam */
+.test-file-box {
+    margin-top: 20px;
+    padding: 15px;
+    background: #eef7ff;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.btn-test {
+    display: inline-block;
+    width: 100%; /* Biar butang ni panjang penuh dalam kotak biru tu */
     box-sizing: border-box;
 }
 
