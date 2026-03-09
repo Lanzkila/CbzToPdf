@@ -28,4 +28,4 @@ A simple, fast, and aesthetic web-based tool to convert your **CBZ** comic files
 If you want to run this locally:
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/lanzkila/Audio-Player-v2.git](https://github.com/lanzkila/Audio-Player-v2.git)
+   git clone [https://github.com/lanzkila/CbzToPdf.git](https://github.com/lanzkila/CbzToPdf.git)
