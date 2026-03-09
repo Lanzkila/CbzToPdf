@@ -283,9 +283,9 @@ document.getElementById('convertBtn').onclick = async function() {
           URL.revokeObjectURL(url);
           
           // --- LOGIK PROGRESS & ROKET ---
-          let percent = Math.round(((i + 1) / files.length) * 100);
-          percentText.innerText = percent + '%';
-          if(progressBar) progressBar.style.width = percent + '%';
+          let current = i + 1; // Wajib ada ni supaya 'current' dikenali
+          let total = files.length; // Wajib ada ni supaya 'total' dikenali
+          let percent = Math.round((current / total) * 100);
            document.getElementById('progressBar').style.width = percent + '%';
            document.getElementById('percentText').innerText = percent + '%';
            document.getElementById('pageCounter').innerText = current + " / " + total;
